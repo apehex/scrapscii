@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "scrascii"
+name = "scrapscii"
 version = "0.0.1"
 description = "Scrape ASCII art from various sources."
 authors = ["apehex <apehex@protonmail.com>"]
