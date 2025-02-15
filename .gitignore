@@ -1,0 +1,16 @@
+# secrets
+.env
+
+# python env
+.python-version
+.venv
+poetry.lock
+
+# temp
+dist
+__pycache__
+.pytest_cache
+
+# tensorflow logs
+.logs
+.models

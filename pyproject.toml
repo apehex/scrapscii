@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "scrascii"
+version = "0.0.1"
+description = "Scrape ASCII art from various sources."
+authors = ["apehex <apehex@protonmail.com>"]
+readme = ".github/README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.13"
+pyarrow = ">=16.0"
+scrapy = ">=2.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
