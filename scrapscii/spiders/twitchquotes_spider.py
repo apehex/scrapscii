@@ -5,14 +5,21 @@ import scrapscii.unicode
 # COPYPASTA ####################################################################
 
 class TwitchQuotesSpider(scrapy.Spider):
-    name = "twitchquotes"
+    name = 'twitchquotes'
+
+    # META #####################################################################
+
+    urls = [
+        f'https://www.twitchquotes.com/copypastas/ascii-art?page={__i}'
+        for __i in range(1, 54)]
+
+    # SCRAPING #################################################################
 
     def start_requests(self):
-        __urls = [
-            f'https://www.twitchquotes.com/copypastas/ascii-art?page={__i}'
-            for __i in range(1, 54)]
-        for __u in __urls:
+        for __u in self.urls:
             yield scrapy.Request(url=__u, callback=self.parse)
+
+    # PARSING ##################################################################
 
     def parse(self, response):
         for __pasta in response.css('article.twitch-copypasta-card'):
