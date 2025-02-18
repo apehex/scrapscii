@@ -59,13 +59,13 @@ class AsciiArtSpider(scrapy.Spider):
             __all = __item.css('::text').getall()
             if __all:
                 # capture
-                __tags = response.url.split('/')[3:]
                 __caption = ''.join(__all[:-1])
                 __content = __all[-1]
+                __labels = response.url.split('/')[3:]
                 # format
                 yield {
                     'caption': __caption,
                     'content': __content,
-                    'labels': ','.join([__t.replace('-', ' ').capitalize() for __t in __tags]),
+                    'labels': ','.join(__t.replace('-', ' ').capitalize() for __t in __labels),
                     'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
                     'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),}
