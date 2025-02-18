@@ -18,8 +18,8 @@ CATEGORY_DICT = {
 SECTION_RE = re.compile(r'^@@\s+([0-9A-F]+)\s+(.+?)\s+([0-9A-F]+)\s*$', re.IGNORECASE)
 SECTION_PATH = os.path.join(os.path.dirname(__file__), '.data/sections.txt')
 SECTION_DICT = {
-    (0x0, 0x7f): 'C0 Controls and Basic Latin (Basic Latin)',
-    (0x80, 0xff): 'C1 Controls and Latin-1 Supplement (Latin-1 Supplement)',
+    (0x0, 0x7f): 'ASCII C0', # C0 Controls and Basic Latin (Basic Latin)
+    (0x80, 0xff): 'ASCII C1', # C1 Controls and Latin-1 Supplement (Latin-1 Supplement)
     (0x100, 0x17f): 'Latin Extended-A',
     (0x180, 0x24f): 'Latin Extended-B',
     (0x250, 0x2af): 'IPA Extensions',
