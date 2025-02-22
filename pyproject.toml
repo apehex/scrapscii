@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "scrapscii"
-version = "0.0.1"
+version = "0.0.2"
 description = "Scrape ASCII art from various sources."
 authors = ["apehex <apehex@protonmail.com>"]
 readme = ".github/README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
+art = ">=6.0"
 pyarrow = ">=16.0"
 scrapy = ">=2.0"
 
