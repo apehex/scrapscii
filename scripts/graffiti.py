@@ -25,9 +25,9 @@ if __name__ == '__main__':
 
     for __font in art.params.FONT_MAP.keys():
         __dataset = []
-        
+
         # GENERATE #############################################################
-        
+
         for __text in SAMPLES.values():
             __decorations = random.sample(sorted(art.params.DECORATIONS_MAP.keys()), 3) + ['no']
             __spacings = random.sample(range(0,4), 2)
