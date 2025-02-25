@@ -1,77 +1,97 @@
-#
-# For licensing see accompanying LICENSE file.
-# Copyright (C) 2024 Apple Inc. All Rights Reserved.
-#
-from PIL import Image
-import requests
-from io import BytesIO
-from datasets import load_dataset
+import hashlib
+import io
+import itertools
 import json
-import numpy as np
-import torch
+import os
+import random
+import subprocess
+import tempfile
+import urllib
 
-from training.dr.transforms import compose_from_config
+import datasets
+import pyarrow.lib as pl
+import pyarrow.parquet as pq
+import requests
 
+import scrapscii.data
+import scrapscii.unicode
+
+# CONSTANTS ####################################################################
+
+WIDTH_MIN = 16
+WIDTH_MAX = 128
+
+# IO ###########################################################################
+
+HOME_PATH = os.getenv('HOME')
+TEMP_PATH = tempfile.mkdtemp()
+DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'datasets/images'))
+
+# EXTRACT ######################################################################
 
 if __name__ == '__main__':
-    rconfig_aug = {
-        "normalize": {
-            "mean": [0.48145466, 0.4578275, 0.40821073],
-            "std": [0.26862954, 0.26130258, 0.27577711]
-        },
-        "rand_augment": {"enable": True, "p": 1.0},
-        "random_resized_crop": {"interpolation": "bicubic", "size": 224},
-        "to_rgb": {"enable": True},
-        "to_tensor": {"enable": True}
-    }
-    dr_transforms = compose_from_config(rconfig_aug)
+    # shard index
+    __i = 0
 
-    dataset = load_dataset("apple/DataCompDR-12M", split="train", streaming=True)
-    sample = next(iter(dataset))
+    # download the dataset
+    __dataset_ascii = []
+    __dataset_image = datasets.load_dataset('apple/DataCompDR-12M', split='train', cache_dir='~/.cache/huggingface/datasets', streaming=True)
+    __iter_image = itertools.islice(__dataset_image, 0, 1024)
 
-    # Load image from URL
-    url = sample['url.txt']
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
-    sample["image"] = img
+    # iterate over the samples
+    for __sample in __iter_image:
+        __sample = next(__iter_image)
 
-    # Preprocess image
-    # Sample an image augmentation
-    param_augs = json.loads(sample["paug.json"]["param_aug"])
-    aug_idx = np.random.randint(0, len(param_augs))
-    params = param_augs[aug_idx]
-    params = dr_transforms.decompress(params)
-    image = sample["image"].convert('RGB')
-    image, _ = dr_transforms.reapply(image, params)
+        # parse the URL
+        __url = __sample['url.txt']
+        __hash = hashlib.sha1(__url.encode('utf-8')).hexdigest()
+        __path = urllib.parse.urlparse(__url).path
+        __filename = __path.split('/')[-1]
+        __extension = os.path.splitext(__filename)[-1]
 
-    # Preprocess synthetic text
-    scapi = np.random.randint(0, len(sample["syn.json"]["syn_text"]))
-    syn_text = sample["syn.json"]["syn_text"][scapi]
+        # download image from URL
+        try:
+            __response = requests.get(__url, timeout=2)
+        except:
+            print(f'Failed to download {__url}')
+            continue
 
-    # Preprocess embeddings
-    if "npz" in sample:
-        image_emb = sample["npz"]["image_emb"][aug_idx]
-        text_emb_all = sample["npz"]["text_emb"]
-    elif "pth.gz" in sample:
-        image_emb = sample["pth.gz"]["image_emb"][aug_idx]
-        text_emb_all = sample["pth.gz"]["text_emb"]
-    capi = 0
-    text_emb = text_emb_all[capi]
-    syn_text_emb = text_emb_all[1+scapi]
-    if not isinstance(image_emb, torch.Tensor):
-        image_emb = torch.tensor(image_emb)
-        text_emb = torch.tensor(text_emb)
-        syn_text_emb = torch.tensor(syn_text_emb)
-    image_emb = image_emb.type(torch.float32)
-    text_emb = text_emb.type(torch.float32)
-    syn_text_emb = syn_text_emb.type(torch.float32)
+        # save image on disk
+        __path = os.path.join(TEMP_PATH, __hash + __extension)
+        with open(__path, 'b+w') as __file:
+            __file.write(__response.content)
 
-    print(
-        {
-            'image': image.shape,
-            'image_emb': image_emb.shape,
-            'text_emb': text_emb.shape,
-            "syn_text": syn_text,
-            'syn_text_emb': syn_text_emb.shape,
-        }
-    )
+        # choose the config randomly
+        __width = '--width {width}'.format(width=random.randint(WIDTH_MIN, WIDTH_MAX))
+        __braille = '--braille' if random.choice([True, False]) else ''
+        __complex = '--complex' if random.choice([True, False]) else ''
+        __dither = '--dither' if __braille and random.choice([True, False]) else ''
+        __grayscale = '--grayscale' if random.choice([False]) else '' # colorless terminal
+        __negative = '--negative' if random.choice([True, False]) else ''
+
+        # choose a caption among the synthetic text
+        __index = random.randint(0, len(__sample['syn.json']['syn_text']) - 1)
+        __caption = __sample['syn.json']['syn_text'][__index]
+
+        # export the conversion config
+        __labels = [__l for __l in [__width, __braille, __complex, __dither, __grayscale, __negative] if __l]
+
+        # convert the image to ASCII art
+        __flags = list(itertools.chain.from_iterable(__l.split(' ') for __l in __labels if __l))
+        __process = subprocess.run(['ascii-image-converter'] + __flags + [__path], stdout=subprocess.PIPE)
+        __content = __process.stdout.decode('utf-8')
+
+        # save
+        __dataset_ascii.append({
+            'caption': __caption,
+            'content': __content,
+            'labels': ','.join(__labels),
+            'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
+            'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
+
+    # export as parquet 
+    pq.write_table(
+        table=pl.Table.from_pylist(
+            mapping=__dataset_ascii,
+            schema=scrapscii.data.SCHEMA),
+        where=os.path.join(DATA_PATH, '{index:0>4d}.parquet'.format(index=__i)))
