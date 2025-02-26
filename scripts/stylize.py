@@ -12,6 +12,7 @@ import datasets
 import pyarrow.lib as pl
 import pyarrow.parquet as pq
 import requests
+import tqdm
 
 import scrapscii.data
 import scrapscii.unicode
@@ -20,6 +21,7 @@ import scrapscii.unicode
 
 WIDTH_MIN = 16
 WIDTH_MAX = 128
+TOTAL_LEN = 128
 
 # IO ###########################################################################
 
@@ -36,10 +38,10 @@ if __name__ == '__main__':
     # download the dataset
     __table = []
     __dataset = datasets.load_dataset('apple/DataCompDR-12M', split='train', cache_dir='~/.cache/huggingface/datasets', streaming=True)
-    __iter = itertools.islice(__dataset, 0, 1024)
+    __iter = itertools.islice(__dataset, 0, TOTAL_LEN)
 
     # iterate over the samples
-    for __sample in __iter:
+    for __sample in tqdm.tqdm(__iter, total=TOTAL_LEN):
 
         # parse the URL
         __url = __sample['url.txt']
@@ -52,7 +54,7 @@ if __name__ == '__main__':
         try:
             __response = requests.get(__url, timeout=2)
         except:
-            print(f'Failed to download {__url}')
+            tqdm.tqdm.write(f'Failed to download {__url}')
             continue
 
         # save image on disk
