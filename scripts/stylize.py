@@ -21,6 +21,7 @@ import scrapscii.unicode
 
 WIDTH_MIN = 16
 WIDTH_MAX = 128
+SHARD_LEN = 32 # min size of a dataset shard
 TOTAL_LEN = 128
 
 # IO ###########################################################################
@@ -102,9 +103,22 @@ if __name__ == '__main__':
             tqdm.tqdm.write(f'Failed to convert {__url}')
             continue
 
-    # export as parquet 
-    pq.write_table(
-        table=pl.Table.from_pylist(
-            mapping=__table,
-            schema=scrapscii.data.SCHEMA),
-        where=os.path.join(DATA_PATH, '{shard:0>4d}.parquet'.format(shard=__shard)))
+        # chunk the dataset into shards
+        if len(__table) >= SHARD_LEN:
+            # export as parquet
+            pq.write_table(
+                table=pl.Table.from_pylist(
+                    mapping=__table,
+                    schema=scrapscii.data.SCHEMA),
+                where=os.path.join(DATA_PATH, '{shard:0>4d}.parquet'.format(shard=__shard)))
+            # refresh
+            __shard += 1
+            __table = []
+
+    # export the remainder
+    if len(__table) > 0:
+        pq.write_table(
+            table=pl.Table.from_pylist(
+                mapping=__table,
+                schema=scrapscii.data.SCHEMA),
+            where=os.path.join(DATA_PATH, '{shard:0>4d}.parquet'.format(shard=__shard)))
