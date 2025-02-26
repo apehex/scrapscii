@@ -26,7 +26,6 @@ TOTAL_LEN = 2**15
 
 # IO ###########################################################################
 
-HOME_PATH = os.getenv('HOME')
 TEMP_PATH = tempfile.mkdtemp()
 DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'datasets/images'))
 
@@ -70,7 +69,7 @@ if __name__ == '__main__':
 
         # download image from URL
         try:
-            __response = requests.get(__url, timeout=2)
+            __response = requests.get(__url, timeout=1)
         except:
             tqdm.tqdm.write(f'Failed to download {__url}')
             continue
