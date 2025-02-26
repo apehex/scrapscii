@@ -40,7 +40,6 @@ if __name__ == '__main__':
 
     # iterate over the samples
     for __sample in __iter:
-        __sample = next(__iter)
 
         # parse the URL
         __url = __sample['url.txt']
