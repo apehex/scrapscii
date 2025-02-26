@@ -29,6 +29,14 @@ HOME_PATH = os.getenv('HOME')
 TEMP_PATH = tempfile.mkdtemp()
 DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'datasets/images'))
 
+# CHECK ########################################################################
+
+def is_valid(ascii: str, width: int=WIDTH_MIN) -> bool:
+    return (
+        bool(ascii)
+        and len(ascii) >= width
+        and not 'error: can\' decode' in ascii)
+
 # EXTRACT ######################################################################
 
 if __name__ == '__main__':
@@ -82,13 +90,17 @@ if __name__ == '__main__':
         __process = subprocess.run(['ascii-image-converter'] + __flags + [__path], stdout=subprocess.PIPE)
         __content = __process.stdout.decode('utf-8')
 
-        # save
-        __table.append({
-            'caption': __caption,
-            'content': __content,
-            'labels': ','.join(__labels),
-            'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
-            'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
+        # check for conversion errors
+        if is_valid(__content):
+            __table.append({
+                'caption': __caption,
+                'content': __content,
+                'labels': ','.join(__labels),
+                'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
+                'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
+        else:
+            tqdm.tqdm.write(f'Failed to convert {__url}')
+            continue
 
     # export as parquet 
     pq.write_table(
