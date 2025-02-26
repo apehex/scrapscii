@@ -31,16 +31,16 @@ DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'dat
 
 if __name__ == '__main__':
     # shard index
-    __i = 0
+    __shard = 0
 
     # download the dataset
-    __dataset_ascii = []
-    __dataset_image = datasets.load_dataset('apple/DataCompDR-12M', split='train', cache_dir='~/.cache/huggingface/datasets', streaming=True)
-    __iter_image = itertools.islice(__dataset_image, 0, 1024)
+    __table = []
+    __dataset = datasets.load_dataset('apple/DataCompDR-12M', split='train', cache_dir='~/.cache/huggingface/datasets', streaming=True)
+    __iter = itertools.islice(__dataset, 0, 1024)
 
     # iterate over the samples
-    for __sample in __iter_image:
-        __sample = next(__iter_image)
+    for __sample in __iter:
+        __sample = next(__iter)
 
         # parse the URL
         __url = __sample['url.txt']
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         __content = __process.stdout.decode('utf-8')
 
         # save
-        __dataset_ascii.append({
+        __table.append({
             'caption': __caption,
             'content': __content,
             'labels': ','.join(__labels),
@@ -92,6 +92,6 @@ if __name__ == '__main__':
     # export as parquet 
     pq.write_table(
         table=pl.Table.from_pylist(
-            mapping=__dataset_ascii,
+            mapping=__table,
             schema=scrapscii.data.SCHEMA),
-        where=os.path.join(DATA_PATH, '{index:0>4d}.parquet'.format(index=__i)))
+        where=os.path.join(DATA_PATH, '{shard:0>4d}.parquet'.format(shard=__shard)))
