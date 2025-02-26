@@ -21,8 +21,8 @@ import scrapscii.unicode
 
 WIDTH_MIN = 16
 WIDTH_MAX = 128
-SHARD_LEN = 32 # min size of a dataset shard
-TOTAL_LEN = 128
+SHARD_LEN = 2**12 # min size of a dataset shard
+TOTAL_LEN = 2**15
 
 # IO ###########################################################################
 
@@ -32,11 +32,20 @@ DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'dat
 
 # CHECK ########################################################################
 
-def is_valid(ascii: str, width: int=WIDTH_MIN) -> bool:
+CORRUPTED_HASH = ['4dcb57651a75abfd07fb36c70c6c5108c49bdb34']
+
+def is_valid_image(image: bytes) -> bool:
+    return (
+        bool(image)
+        and type(image) == bytes
+        and not hashlib.sha1(image).hexdigest() in CORRUPTED_HASH)
+
+def is_valid_ascii(ascii: str, width: int=WIDTH_MIN) -> bool:
     return (
         bool(ascii)
+        and type(ascii) == str
         and len(ascii) >= width
-        and not 'error: can\' decode' in ascii)
+        and not 'error: can\'t decode' in ascii.lower())
 
 # EXTRACT ######################################################################
 
@@ -68,8 +77,13 @@ if __name__ == '__main__':
 
         # save image on disk
         __path = os.path.join(TEMP_PATH, __hash + __extension)
-        with open(__path, 'b+w') as __file:
-            __file.write(__response.content)
+        __bytes = __response.content
+        if is_valid_image(__bytes):
+            with open(__path, 'b+w') as __file:
+                __file.write(__bytes)
+        else:
+            tqdm.tqdm.write(f'Skip corrupted {__url}')
+            continue
 
         # choose the config randomly
         __width = '--width {width}'.format(width=random.randint(WIDTH_MIN, WIDTH_MAX))
@@ -92,7 +106,7 @@ if __name__ == '__main__':
         __content = __process.stdout.decode('utf-8')
 
         # check for conversion errors
-        if is_valid(__content):
+        if is_valid_ascii(__content):
             __table.append({
                 'caption': __caption,
                 'content': __content,
