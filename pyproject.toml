@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scrapscii"
-version = "0.0.2"
+version = "0.0.3"
 description = "Scrape ASCII art from various sources."
 authors = ["apehex <apehex@protonmail.com>"]
 readme = ".github/README.md"
