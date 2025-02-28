@@ -19,8 +19,11 @@ import scrapscii.unicode
 
 # CONSTANTS ####################################################################
 
+TIMEOUT = 0.1
+
 WIDTH_MIN = 16
 WIDTH_MAX = 128
+
 TABLE_LEN = 2**5
 SHARD_LEN = 2**10
 TOTAL_LEN = 2**12
@@ -125,6 +128,7 @@ def convert_shard(
     width_max: int=WIDTH_MAX,
     temp_path: str=TEMP_PATH,
     data_path: str=DATA_PATH,
+    time_max: int=TIMEOUT,
 ) -> tuple:
     # current table
     __index = table_idx # index
@@ -133,21 +137,26 @@ def convert_shard(
     # take a shard's worth of data
     __iter = itertools.islice(dataset, 0, shard_len)
 
+    # track progress
+    __pbar = tqdm.tqdm(__iter, total=shard_len)
+    __skip = 0
+
     # iterate over the samples
-    for __sample in tqdm.tqdm(__iter, total=shard_len):
+    for __sample in __pbar:
 
         # parse the URL
         __url = __sample['url.txt']
         __path = format_path(url=__url, temp=temp_path)
 
         # download image from URL
-        __bytes = download_image(__url)
+        __bytes = download_image(__url, timeout=time_max)
 
         # check hex digest
         if is_valid_image(__bytes):
             export_image(data=__bytes, path=__path)
         else:
-            tqdm.tqdm.write(f'Skip corrupted {__url}')
+            __skip += 1
+            __pbar.set_postfix({'skipped': __skip}, refresh=True)
             continue
 
         # choose the config randomly
@@ -172,7 +181,8 @@ def convert_shard(
                 'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
                 'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
         else:
-            tqdm.tqdm.write(f'Failed to convert {__url}')
+            __skip += 1
+            __pbar.set_postfix({'skipped': __skip}, refresh=True)
             continue
 
         # chunk the dataset into shards
