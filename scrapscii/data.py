@@ -15,6 +15,15 @@ SCHEMA = pa.schema([
     pl.field('charsets', pa.string()),
     pl.field('chartypes', pa.string()),])
 
+# EXPORT #######################################################################
+
+def export_table_as_parquet(table: iter, path: str, schema: pl.Schema=SCHEMA) -> None:
+    pq.write_table(
+        table=pl.Table.from_pylist(
+            mapping=table,
+            schema=schema),
+        where=path)
+
 # CONVERT ######################################################################
 
 def cast_json_to_parquet(path: str, schema: pl.Schema=SCHEMA) -> None:
@@ -23,7 +32,5 @@ def cast_json_to_parquet(path: str, schema: pl.Schema=SCHEMA) -> None:
     # import the JSON data
     with open(path, 'r') as __file:
         __data = json.load(__file)
-    # cast raw data to table
-    __table = pl.Table.from_pylist(__data, schema=schema)
     # export as parquet
-    pq.write_table(table=__table, where=__path)
+    export_table_as_parquet(table=__data, path=__path, schema=schema)
