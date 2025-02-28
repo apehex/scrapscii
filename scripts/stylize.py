@@ -93,14 +93,14 @@ if __name__ == '__main__':
         __negative = '--negative' if random.choice([True, False]) else ''
 
         # choose a caption among the synthetic text
-        __index = random.randint(0, len(__sample['syn.json']['syn_text']) - 1)
-        __caption = __sample['syn.json']['syn_text'][__index]
+        __choice = random.randint(0, len(__sample['syn.json']['syn_text']) - 1)
+        __caption = __sample['syn.json']['syn_text'][__choice]
 
         # export the conversion config
         __labels = [__l for __l in [__width, __braille, __complex, __dither, __grayscale, __negative] if __l]
 
         # convert the image to ASCII art
-        __flags = list(itertools.chain.from_iterable(__l.split(' ') for __l in __labels if __l))
+        __flags = list(itertools.chain.from_iterable(__l.split(' ').strip('--') for __l in __labels if __l))
         __process = subprocess.run(['ascii-image-converter'] + __flags + [__path], stdout=subprocess.PIPE)
         __content = __process.stdout.decode('utf-8')
 
