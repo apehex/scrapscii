@@ -48,7 +48,7 @@ def is_valid_ascii(ascii: str, width: int=WIDTH_MIN) -> bool:
         bool(ascii)
         and type(ascii) == str
         and len(ascii) >= width
-        and not 'error: can\'t decode' in ascii.lower())
+        and not 'error' in ascii.lower())
 
 # DOWNLOAD #####################################################################
 
