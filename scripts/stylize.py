@@ -118,6 +118,18 @@ def export_table(table: iter, index: int, path: str=DATA_PATH) -> None:
 
 # CONVERT ######################################################################
 
+def convert_image(path: str, options: list, timeout: int=TIME_MAX) -> str:
+    __ascii = ''
+    # run binary tool
+    try:
+        __process = subprocess.run(['ascii-image-converter'] + options + [path], stdout=subprocess.PIPE, timeout=timeout)
+        __ascii = __process.stdout.decode('utf-8')
+    # timeout longer executions
+    except:
+        __ascii = ''
+    # default
+    return __ascii
+
 def convert_shard(
     dataset: iter,
     table: iter=[],
@@ -169,13 +181,7 @@ def convert_shard(
         __caption = __sample['syn.json']['syn_text'][__choice]
 
         # convert the image to ASCII art
-        try:
-            __process = subprocess.run(['ascii-image-converter'] + __args + [__path], stdout=subprocess.PIPE, timeout=time_max)
-            __content = __process.stdout.decode('utf-8')
-        except:
-            __skip += 1
-            __pbar.set_postfix({'skipped': __skip}, refresh=True)
-            continue
+        __content = convert_image(path=__path, options=__args, timeout=time_max)
 
         # check for conversion errors
         if is_valid_ascii(__content):
