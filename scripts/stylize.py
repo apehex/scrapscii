@@ -19,7 +19,7 @@ import scrapscii.unicode
 
 # CONSTANTS ####################################################################
 
-TIMEOUT = 0.1
+TIME_MAX = 0.1
 
 WIDTH_MIN = 16
 WIDTH_MAX = 128
@@ -59,7 +59,7 @@ def download_image(url: str, timeout: int=1) -> bytes:
         __response = requests.get(url, timeout=timeout)
         __bytes = __response.content
     # ignore exceptions
-    except Exception as __e:
+    except:
         __bytes = b''
     # default
     return __bytes
@@ -128,7 +128,7 @@ def convert_shard(
     width_max: int=WIDTH_MAX,
     temp_path: str=TEMP_PATH,
     data_path: str=DATA_PATH,
-    time_max: int=TIMEOUT,
+    time_max: int=TIME_MAX,
 ) -> tuple:
     # current table
     __index = table_idx # index
@@ -169,8 +169,13 @@ def convert_shard(
         __caption = __sample['syn.json']['syn_text'][__choice]
 
         # convert the image to ASCII art
-        __process = subprocess.run(['ascii-image-converter'] + __args + [__path], stdout=subprocess.PIPE)
-        __content = __process.stdout.decode('utf-8')
+        try:
+            __process = subprocess.run(['ascii-image-converter'] + __args + [__path], stdout=subprocess.PIPE, timeout=time_max)
+            __content = __process.stdout.decode('utf-8')
+        except:
+            __skip += 1
+            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            continue
 
         # check for conversion errors
         if is_valid_ascii(__content):
@@ -219,6 +224,7 @@ if __name__ == '__main__':
             width_min=WIDTH_MIN,
             width_max=WIDTH_MAX,
             temp_path=TEMP_PATH,
-            data_path=DATA_PATH,)
+            data_path=DATA_PATH,
+            time_max=TIME_MAX,)
         # remove the temp downloads (images)
         clear_dir(TEMP_PATH)
