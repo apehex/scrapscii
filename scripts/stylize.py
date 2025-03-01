@@ -68,11 +68,10 @@ def format_path(url: str, temp: str=TEMP_PATH) -> str:
     # parse the URL
     __path = urllib.parse.urlparse(url).path
     __filename = __path.split('/')[-1]
-    # __extension = os.path.splitext(__filename)[-1]
     # reduce the filename to a fixed size
     __hash = hashlib.sha1(url.encode('utf-8')).hexdigest()
     # safe path
-    return os.path.join(temp, __hash) # + __extension
+    return os.path.join(temp, __hash) # __extension = os.path.splitext(__filename)[-1]
 
 def export_image(data: bytes, path: str) -> None:
     with open(path, 'b+w') as __file:
