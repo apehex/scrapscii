@@ -110,6 +110,24 @@ def export_image(data: bytes, path: str) -> None:
     with open(path, 'b+w') as __file:
         __file.write(data)
 
+# STATS ########################################################################
+
+def init_stats() -> dict:
+    return {
+        'valid': 0,
+        'invalid-response': 0,
+        'invalid-extension': 0,
+        'invalid-image': 0,
+        'invalid-asciiart': 0,}
+
+def update_stats(stats: dict, valid: int=0, response: int=0, extension: int=0, image: int=0, asciiart: int=0) -> dict:
+    return {
+        'valid': stats['valid'] + valid,
+        'invalid-response': stats['invalid-response'] + response,
+        'invalid-extension': stats['invalid-extension'] + extension,
+        'invalid-image': stats['invalid-image'] + image,
+        'invalid-asciiart': stats['invalid-asciiart'] + asciiart,}
+
 # CLEAR ########################################################################
 
 def list_files(path: str, extension: str='') -> list:
@@ -185,10 +203,10 @@ def convert_shard(
 
     # track progress
     __pbar = tqdm.tqdm(__iter, total=shard_len)
-    __skip = 0
+    __stats = init_stats()
 
     # iterate over the samples
-    for __sample in __pbar:
+    for __j, __sample in enumerate(__pbar):
 
         # parse the URL
         __url = __sample['url.txt']
@@ -196,22 +214,22 @@ def convert_shard(
         # download image from URL
         __response = download_image(__url, timeout=time_max)
         if not is_valid_response(__response):
-            __skip += 1
-            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            __stats = update_stats(stats=__stats, response=1)
+            __pbar.set_postfix(__stats, refresh=True)
             continue
 
         # parse the extension
         __extension = parse_extension(__response)
         if not is_valid_extension(__extension):
-            __skip += 1
-            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            __stats = update_stats(stats=__stats, extension=1)
+            __pbar.set_postfix(__stats, refresh=True)
             continue
 
         # parse the image content
         __bytes = parse_content(__response)
         if not is_valid_image(__bytes):
-            __skip += 1
-            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            __stats = update_stats(stats=__stats, image=1)
+            __pbar.set_postfix(__stats, refresh=True)
             continue
 
         # save to disk
@@ -230,11 +248,13 @@ def convert_shard(
         # convert the image to ASCII art
         __content = convert_image(path=__path, options=__args, timeout=time_max)
         if not is_valid_ascii(__content):
-            __skip += 1
-            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            __stats = update_stats(stats=__stats, asciiart=1)
+            __pbar.set_postfix(__stats, refresh=True)
             continue
 
         # add a row
+        __stats = update_stats(stats=__stats, valid=1)
+        __pbar.set_postfix(__stats, refresh=True)
         __table.append({
             'caption': __caption,
             'content': __content,
