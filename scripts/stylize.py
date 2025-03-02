@@ -90,7 +90,7 @@ def parse_extension(response: requests.models.Response) -> str:
     __extension = ''
     # parse the header
     if is_valid_response(response):
-        __headers = response.headers['content-type']
+        __headers = response.headers.get('content-type', '')
         __extension = mimetypes.guess_extension(__headers)
     # parse the URL
     if not is_valid_extension(__extension):
