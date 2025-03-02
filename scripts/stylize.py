@@ -2,6 +2,7 @@ import hashlib
 import io
 import itertools
 import json
+import mimetypes
 import os
 import random
 import subprocess
@@ -24,18 +25,34 @@ TIME_MAX = 0.1
 WIDTH_MIN = 16
 WIDTH_MAX = 128
 
-TABLE_LEN = 2**5
-SHARD_LEN = 2**10
-TOTAL_LEN = 2**12
+TABLE_LEN = 2**4
+SHARD_LEN = 2**6
+TOTAL_LEN = 2**8
 
 # IO ###########################################################################
 
 TEMP_PATH = tempfile.mkdtemp()
 DATA_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '../', 'datasets/images'))
 
+# FILTER BY EXT ################################################################
+
+EXTENSION_LIST = ['jpeg', 'jpg', 'png', 'bmp', 'webp', 'tiff', 'tif', 'gif']
+
 # CHECK ########################################################################
 
 CORRUPTED_HASH = ['4dcb57651a75abfd07fb36c70c6c5108c49bdb34']
+
+def is_valid_response(response: requests.models.Response) -> bool:
+    return (
+        bool(response)
+        and type(response) == requests.models.Response
+        and response.status_code == 200)
+
+def is_valid_extension(extension: str, accepted: list=EXTENSION_LIST) -> bool:
+    return (
+        bool(extension)
+        and type(extension) == str
+        and extension.lower().strip('.') in accepted)
 
 def is_valid_image(image: bytes) -> bool:
     return (
@@ -52,26 +69,42 @@ def is_valid_ascii(ascii: str, width: int=WIDTH_MIN) -> bool:
 
 # DOWNLOAD #####################################################################
 
-def download_image(url: str, timeout: int=1) -> bytes:
-    __bytes = b''
+def download_image(url: str, timeout: int=1) -> requests.models.Response:
+    __response = None
     # retrieve the image content as bytes
     try:
         __response = requests.get(url, timeout=timeout)
-        __bytes = __response.content
     # ignore exceptions
     except:
-        __bytes = b''
+        __response = None
     # default
+    return __response
+
+def parse_content(response: requests.models.Response) -> bytes:
+    __bytes = b''
+    if is_valid_response(response):
+        __bytes = response.content
     return __bytes
 
-def format_path(url: str, temp: str=TEMP_PATH) -> str:
+def parse_extension(response: requests.models.Response) -> str:
+    __extension = ''
+    # parse the header
+    if is_valid_response(response):
+        __headers = response.headers['content-type']
+        __extension = mimetypes.guess_extension(__headers)
     # parse the URL
-    __path = urllib.parse.urlparse(url).path
-    __filename = __path.split('/')[-1]
+    if not is_valid_extension(__extension):
+        __path = urllib.parse.urlparse(response.url).path
+        __filename = __path.split('/')[-1]
+        __extension = os.path.splitext(__filename)[-1]
+    # favor the information coming from the header
+    return __extension
+
+def format_path(url: str, extension: str, temp: str=TEMP_PATH) -> str:
     # reduce the filename to a fixed size
     __hash = hashlib.sha1(url.encode('utf-8')).hexdigest()
     # safe path
-    return os.path.join(temp, __hash) # __extension = os.path.splitext(__filename)[-1]
+    return os.path.join(temp, __hash + '.' + extension.strip('.'))
 
 def export_image(data: bytes, path: str) -> None:
     with open(path, 'b+w') as __file:
@@ -159,19 +192,32 @@ def convert_shard(
 
         # parse the URL
         __url = __sample['url.txt']
-        __path = format_path(url=__url, temp=temp_path)
 
         # download image from URL
-        __bytes = download_image(__url, timeout=time_max)
-
-        # check hex digest
-        if is_valid_image(__bytes):
-            export_image(data=__bytes, path=__path)
-        else:
+        __response = download_image(__url, timeout=time_max)
+        if not is_valid_response(__response):
             __skip += 1
             __pbar.set_postfix({'skipped': __skip}, refresh=True)
             continue
 
+        # parse the extension
+        __extension = parse_extension(__response)
+        if not is_valid_extension(__extension):
+            __skip += 1
+            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            continue
+
+        # parse the image content
+        __bytes = parse_content(__response)
+        if not is_valid_image(__bytes):
+            __skip += 1
+            __pbar.set_postfix({'skipped': __skip}, refresh=True)
+            continue
+
+        # save to disk
+        __path = format_path(url=__url, extension=__extension, temp=temp_path)
+        export_image(data=__bytes, path=__path)
+        
         # choose the config randomly
         __options = random_options(width_min=width_min, width_max=width_max)
         __args = format_args(__options)
@@ -183,19 +229,18 @@ def convert_shard(
 
         # convert the image to ASCII art
         __content = convert_image(path=__path, options=__args, timeout=time_max)
-
-        # check for conversion errors
-        if is_valid_ascii(__content):
-            __table.append({
-                'caption': __caption,
-                'content': __content,
-                'labels': ','.join(__labels),
-                'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
-                'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
-        else:
+        if not is_valid_ascii(__content):
             __skip += 1
             __pbar.set_postfix({'skipped': __skip}, refresh=True)
             continue
+
+        # add a row
+        __table.append({
+            'caption': __caption,
+            'content': __content,
+            'labels': ','.join(__labels),
+            'charsets': ','.join(set(scrapscii.unicode.lookup_section(__c) for __c in __content)),
+            'chartypes': ','.join(set(scrapscii.unicode.lookup_category(__c) for __c in __content)),})
 
         # chunk the dataset into shards
         if len(__table) >= table_len:
