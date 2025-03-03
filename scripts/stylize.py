@@ -25,6 +25,7 @@ TIME_MAX = 0.1
 WIDTH_MIN = 16
 WIDTH_MAX = 128
 
+SKIPS_LEN = 258000
 TABLE_LEN = 2**4
 SHARD_LEN = 2**6
 TOTAL_LEN = 2**8
@@ -286,6 +287,10 @@ if __name__ == '__main__':
 
     # convert shard by shard
     while __iter:
+        # skip samples that are already processed
+        __skip = itertools.islice(__iter, 0, SKIPS_LEN)
+        for _ in __skip:
+            pass
         # export a shard
         __index, __table = convert_shard(
             dataset=__iter,
