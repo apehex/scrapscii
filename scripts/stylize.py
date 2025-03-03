@@ -113,21 +113,50 @@ def export_image(data: bytes, path: str) -> None:
 
 # STATS ########################################################################
 
-def init_stats() -> dict:
+def init_stats(
+    index: int=0,
+    saved: int=0,
+    skipped: int=0,
+    valid: int=0,
+    response: int=0,
+    extension: int=0,
+    image: int=0,
+    asciiart: int=0
+) -> dict:
     return {
-        'valid': 0,
-        'invalid-response': 0,
-        'invalid-extension': 0,
-        'invalid-image': 0,
-        'invalid-asciiart': 0,}
+        'index': index,
+        'total': max(saved, skipped),
+        'saved': saved,
+        'skipped': skipped,
+        'valid': valid,
+        'invalid': {
+            'response': response,
+            'extension': extension,
+            'image': image,
+            'asciiart': asciiart,},}
 
-def update_stats(stats: dict, valid: int=0, response: int=0, extension: int=0, image: int=0, asciiart: int=0) -> dict:
+def update_stats(
+    stats: dict,
+    index: int=0,
+    saved: int=0,
+    skipped: int=0,
+    valid: int=0,
+    response: int=0,
+    extension: int=0,
+    image: int=0,
+    asciiart: int=0
+) -> dict:
     return {
+        'index': stats['index'] + index,
+        'total': stats['total'] + skipped + valid + response + extension + image + asciiart,
+        'saved': saved or stats['saved'], # keep the latest
+        'skipped': stats['skipped'] + skipped,
         'valid': stats['valid'] + valid,
-        'invalid-response': stats['invalid-response'] + response,
-        'invalid-extension': stats['invalid-extension'] + extension,
-        'invalid-image': stats['invalid-image'] + image,
-        'invalid-asciiart': stats['invalid-asciiart'] + asciiart,}
+        'invalid': {
+            'response': stats['invalid']['response'] + response,
+            'extension': stats['invalid']['extension'] + extension,
+            'image': stats['invalid']['image'] + image,
+            'asciiart': stats['invalid']['asciiart'] + asciiart,},}
 
 # CLEAR ########################################################################
 
