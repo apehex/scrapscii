@@ -203,7 +203,7 @@ def format_args(options: list) -> list:
     return list(itertools.chain.from_iterable(__o.split(' ') for __o in options if __o))
 
 def format_labels(options: list) -> list:
-    return list(itertools.chain.from_iterable(__o.strip('--') for __o in options if __o))
+    return [__o.strip('--') for __o in options if __o]
 
 # EXPORT #######################################################################
 
