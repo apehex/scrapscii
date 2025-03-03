@@ -25,10 +25,12 @@ TIME_MAX = 0.1
 WIDTH_MIN = 16
 WIDTH_MAX = 128
 
-SKIPS_LEN = 258000
+SKIPS_LEN = 32
 TABLE_LEN = 2**4
-SHARD_LEN = 2**6
-TOTAL_LEN = 2**8
+SHARD_LEN = 2**8
+TOTAL_LEN = 2**10
+
+TABLE_IDX = 11
 
 # IO ###########################################################################
 
