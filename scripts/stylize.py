@@ -230,7 +230,7 @@ def convert_image(path: str, options: list, timeout: int=TIME_MAX) -> str:
 def convert_shard(
     dataset: iter,
     table: iter=[],
-    table_idx: int=0,
+    stats: dict=init_stats(),
     table_len: int=TABLE_LEN,
     shard_len: int=SHARD_LEN,
     width_min: int=WIDTH_MIN,
@@ -240,18 +240,17 @@ def convert_shard(
     time_max: int=TIME_MAX,
 ) -> tuple:
     # current table
-    __index = table_idx # index
-    __table = list(table) # data
+    __table = list(table)
 
     # take a shard's worth of data
     __iter = itertools.islice(dataset, 0, shard_len)
 
     # track progress
     __pbar = tqdm.tqdm(__iter, total=shard_len, smoothing=0.0)
-    __stats = init_stats()
+    __stats = dict(stats)
 
     # iterate over the samples
-    for __j, __sample in enumerate(__pbar):
+    for __sample in __pbar:
 
         # parse the URL
         __url = __sample['url.txt']
@@ -280,7 +279,7 @@ def convert_shard(
         # save to disk
         __path = format_path(url=__url, extension=__extension, temp=temp_path)
         export_image(data=__bytes, path=__path)
-        
+
         # choose the config randomly
         __options = random_options(width_min=width_min, width_max=width_max)
         __args = format_args(__options)
@@ -310,42 +309,46 @@ def convert_shard(
         # chunk the dataset into shards
         if len(__table) >= table_len:
             # export as parquet
-            export_table(table=__table, index=__index, path=data_path)
-            # refresh
-            __index += 1
+            export_table(table=__table, index=__stats['index'], path=data_path)
+            # refresh the stats
+            __stats = update_stats(stats=__stats, index=1, saved=__stats['total'])
+            __pbar.set_postfix_str(format_stats(__stats), refresh=True)
+            # clear the table
             __table = []
 
     # return the remainder
-    return (__index, __table)
+    return (__stats, __table)
 
 # MAIN #########################################################################
 
 if __name__ == '__main__':
+    # init the stats
+    __stats = init_stats(index=TABLE_IDX)
+
     # init the table
-    __index = 0 # index
-    __table = [] # data
+    __table = []
 
     # init the dataset
     __dataset = datasets.load_dataset('apple/DataCompDR-12M', split='train', cache_dir='~/.cache/huggingface/datasets', streaming=True)
     __iter = itertools.islice(__dataset, 0, TOTAL_LEN)
 
-    # convert shard by shard
-    while __iter:
-        # skip samples that are already processed
-        __skip = itertools.islice(__iter, 0, SKIPS_LEN)
-        for _ in __skip:
-            pass
-        # export a shard
-        __index, __table = convert_shard(
-            dataset=__iter,
-            table=__table,
-            table_idx=__index,
-            table_len=TABLE_LEN,
-            shard_len=SHARD_LEN,
-            width_min=WIDTH_MIN,
-            width_max=WIDTH_MAX,
-            temp_path=TEMP_PATH,
-            data_path=DATA_PATH,
-            time_max=TIME_MAX,)
-        # remove the temp downloads (images)
-        clear_dir(TEMP_PATH)
+    # skip samples that are already processed
+    __skip = itertools.islice(__iter, 0, SKIPS_LEN)
+    for _ in __skip:
+        __stats = update_stats(stats=__stats, skipped=1)
+    # update the latest checkpoint
+    __stats = update_stats(stats=__stats, saved=__stats['total'])
+    # export a shard
+    __stats, __table = convert_shard(
+        dataset=__iter,
+        table=__table,
+        stats=__stats,
+        table_len=TABLE_LEN,
+        shard_len=SHARD_LEN,
+        width_min=WIDTH_MIN,
+        width_max=WIDTH_MAX,
+        temp_path=TEMP_PATH,
+        data_path=DATA_PATH,
+        time_max=TIME_MAX,)
+    # remove the temp downloads (images)
+    clear_dir(TEMP_PATH)
