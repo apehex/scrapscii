@@ -25,11 +25,11 @@ TIME_MAX = 0.1
 WIDTH_MIN = 16
 WIDTH_MAX = 128
 
-SKIPS_LEN = 32
 TABLE_LEN = 2**4
 SHARD_LEN = 2**8
 TOTAL_LEN = 2**10
 
+SKIPS_LEN = 32
 TABLE_IDX = 11
 
 # IO ###########################################################################
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     __iter = itertools.islice(__dataset, 0, TOTAL_LEN)
 
     # skip samples that are already processed
-    __skip = itertools.islice(__iter, 0, SKIPS_LEN)
+    __skip = tqdm.tqdm(itertools.islice(__iter, 0, SKIPS_LEN), total=SKIPS_LEN, smoothing=0.0)
     for _ in __skip:
         __stats = update_stats(stats=__stats, skipped=1)
     # update the latest checkpoint
