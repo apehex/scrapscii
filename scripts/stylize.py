@@ -313,6 +313,7 @@ def convert_shard(
             # refresh the stats
             __stats = update_stats(stats=__stats, index=1, saved=__stats['total'])
             __pbar.set_postfix_str(format_stats(__stats), refresh=True)
+            __pbar.write(f"{__stats['total']}")
             # clear the table
             __table = []
 
