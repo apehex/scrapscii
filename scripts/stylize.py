@@ -192,12 +192,12 @@ def random_options(width_min: int=WIDTH_MIN, width_max: int=WIDTH_MAX) -> list:
     # choose the config randomly
     __width = '--width {width}'.format(width=random.randint(width_min, width_max))
     __braille = '--braille' if random.choice([True, False]) else ''
-    __color = '--color' if random.choice([True, False]) else ''
+    __color = '--color' if random.choice([True] + 9 * [False]) else ''
     __complex = '--complex' if random.choice([True, False]) else ''
     __dither = '--dither' if __braille and random.choice([True, False]) else ''
-    __grayscale = '--grayscale' if random.choice([False, True]) else ''
-    __negative = '--negative' if random.choice([True, False]) else ''
-    __threshold = '--threshold {threshold}'.format(threshold=random.randint(64, 192)) if __braille and random.choice([True, False]) else ''
+    __grayscale = '--grayscale' if random.choice([True] + 9 * [False]) else ''
+    __negative = '--negative' if random.choice([True] + 9 * [False]) else ''
+    __threshold = '--threshold {threshold}'.format(threshold=random.randint(96, 160)) if __braille and random.choice([True] + 4 * [False]) else ''
     # chain all the options
     return [__width, __braille, __color, __complex, __dither, __grayscale, __negative, __threshold]
 
